@@ -170,7 +170,6 @@ These limitations are documented rather than presented as completed functionalit
 - Activity descriptions, prices, schedules and weather are illustrative prototype content rather than a verified event feed.
 - AI assistance is described in Section 4.
 
-Before submission, identify the source and permission for any additional images or other borrowed assets that remain in use.
 
 ## 9. Development History
 
