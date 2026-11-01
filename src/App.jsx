@@ -1166,20 +1166,26 @@ function App() {
               <div>
                 <div className="subheading">
                   <span>WEEKEND MAP</span>
-                  <h2>Your city story</h2>
+                  <h2>Explore Hong Kong</h2>
                 </div>
 
-                <div className="fake-map">
-                  <div className="map-road road-one" />
-                  <div className="map-road road-two" />
-                  <div className="map-water" />
-
-                  <span className="map-pin pin-one">●</span>
-                  <span className="map-pin pin-two">●</span>
-
-                  <div className="map-label">
-                    HONG KONG
-                  </div>
+                <div style={{ position: 'relative', width: '100%', borderRadius: 20, overflow: 'hidden', border: '1px solid #e5e1e8', background: '#f3f0f5' }}>
+                  <iframe
+                    title="Interactive map of Hong Kong"
+                    src="https://www.openstreetmap.org/export/embed.html?bbox=114.12%2C22.26%2C114.20%2C22.33&layer=mapnik"
+                    width="100%"
+                    height="350"
+                    loading="lazy"
+                    style={{ display: 'block', border: 0 }}
+                  />
+                  <a
+                    href="https://www.openstreetmap.org/#map=13/22.2950/114.1600"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'block', padding: '12px 16px', fontSize: 12, color: '#695477', background: '#fff', textAlign: 'left' }}
+                  >
+                    Open larger map ↗
+                  </a>
                 </div>
               </div>
             </div>
@@ -1719,5 +1725,6 @@ function DemoAccount({ onOpenWeekends }) {
 }
 
 export default App
+
 
 
