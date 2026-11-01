@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const activities = [
@@ -267,6 +267,22 @@ const crewData = [
   },
 ]
 
+function loadSaved(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key))
+
+    if (Array.isArray(fallback)) {
+      return Array.isArray(value) ? value : fallback
+    }
+
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? value
+      : fallback
+  } catch {
+    return fallback
+  }
+}
+
 function App() {
   const [page, setPage] = useState('discover')
   const [mood, setMood] = useState('Arts')
@@ -276,15 +292,53 @@ function App() {
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [crewModal, setCrewModal] = useState(false)
   const [joinedCrew, setJoinedCrew] = useState(false)
-  const [activePlan, setActivePlan] = useState(null)
-  const [saved, setSaved] = useState([])
+
+  const [activePlan, setActivePlan] = useState(
+    () => loadSaved('weekendly-plan', null)
+  )
+
+  const [saved, setSaved] = useState(
+    () => loadSaved('weekendly-saved', [])
+  )
+
   const [checkinModal, setCheckinModal] = useState(false)
   const [checkinText, setCheckinText] = useState('')
   const [rating, setRating] = useState(5)
-  const [guide, setGuide] = useState(null)
+
+  const [guide, setGuide] = useState(
+    () => loadSaved('weekendly-guide', null)
+  )
+
   const [toast, setToast] = useState('')
 
   const resultsRef = useRef(null)
+  const toastTimer = useRef(null)
+  const lastSurprise = useRef(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        'weekendly-plan',
+        JSON.stringify(activePlan)
+      )
+
+      localStorage.setItem(
+        'weekendly-saved',
+        JSON.stringify(saved)
+      )
+
+      localStorage.setItem(
+        'weekendly-guide',
+        JSON.stringify(guide)
+      )
+    } catch {
+      setToast('Could not save changes in this browser.')
+    }
+  }, [activePlan, saved, guide])
+
+  useEffect(() => {
+    return () => clearTimeout(toastTimer.current)
+  }, [])
 
   const moods = [
     ['🎨', 'Arts'],
@@ -295,8 +349,19 @@ function App() {
     ['🎲', 'Surprise Me'],
   ]
 
-  const budgets = ['Free', 'Under HK$100', 'HK$100–300', 'Flexible']
-  const companies = ['Solo', 'Friends', 'Date', 'Meet People']
+  const budgets = [
+    'Free',
+    'Under HK$100',
+    'HK$100–300',
+    'Flexible',
+  ]
+
+  const companies = [
+    'Solo',
+    'Friends',
+    'Date',
+    'Meet People',
+  ]
 
   const budgetLimit =
     budget === 'Free'
@@ -312,16 +377,37 @@ function App() {
       .map((activity) => {
         let score = activity.baseMatch
 
-        if (mood === 'Surprise Me') score += 2
-        else if (activity.tags.includes(mood)) score += 6
-        else score -= 5
+        if (mood === 'Surprise Me') {
+          score += 2
+        } else if (activity.tags.includes(mood)) {
+          score += 6
+        } else {
+          score -= 5
+        }
 
-        if (activity.price <= budgetLimit) score += 3
-        else score -= 12
+        if (activity.price <= budgetLimit) {
+          score += 3
+        } else {
+          score -= 12
+        }
 
-        if (activity.weather === 'Indoor') score += 2
-        if (company === 'Friends' && activity.category === 'Markets') score += 2
-        if (company === 'Solo' && activity.category === 'Chill') score += 3
+        if (activity.weather === 'Indoor') {
+          score += 2
+        }
+
+        if (
+          company === 'Friends' &&
+          activity.category === 'Markets'
+        ) {
+          score += 2
+        }
+
+        if (
+          company === 'Solo' &&
+          activity.category === 'Chill'
+        ) {
+          score += 3
+        }
 
         return {
           ...activity,
@@ -334,7 +420,56 @@ function App() {
 
   function showToast(message) {
     setToast(message)
-    setTimeout(() => setToast(''), 2200)
+
+    clearTimeout(toastTimer.current)
+
+    toastTimer.current = setTimeout(() => {
+      setToast('')
+    }, 3500)
+  }
+
+  function surpriseMe() {
+    const candidates = activities.filter(
+      (activity) => activity.price <= budgetLimit
+    )
+
+    if (candidates.length === 0) {
+      showToast('No plans fit this budget. Try another budget.')
+      return
+    }
+
+    const alternatives = candidates.filter(
+      (activity) => activity.id !== lastSurprise.current
+    )
+
+    const pool = alternatives.length
+      ? alternatives
+      : candidates
+
+    const plan = pool[
+      Math.floor(Math.random() * pool.length)
+    ]
+
+    lastSurprise.current = plan.id
+
+    setSelectedPlan({
+      ...plan,
+      route: plan.route.map((stop) => ({ ...stop })),
+    })
+  }
+
+  function removeStop(index) {
+    setSelectedPlan((current) => {
+      if (!current || current.route.length <= 1) {
+        return current
+      }
+
+      return {
+        ...current,
+        route: current.route.filter((_, i) => i !== index),
+        edited: true,
+      }
+    })
   }
 
   function handlePlan() {
@@ -352,7 +487,7 @@ function App() {
     setSaved((current) =>
       current.includes(id)
         ? current.filter((item) => item !== id)
-        : [...current, id],
+        : [...current, id]
     )
   }
 
@@ -363,7 +498,8 @@ function App() {
   }
 
   function completeCheckin() {
-    const activity = activePlan || selectedPlan || activities[0]
+    const activity =
+      activePlan || selectedPlan || activities[0]
 
     setGuide({
       activity,
@@ -377,6 +513,7 @@ function App() {
     setCheckinText('')
     setPage('weekends')
     setActivePlan(null)
+
     showToast('Weekend memory saved')
   }
 
@@ -388,10 +525,17 @@ function App() {
 
   return (
     <div className="app">
-      {toast && <div className="toast">✓ {toast}</div>}
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
+      )}
 
       <nav>
-        <button className="logo" onClick={() => navTo('discover')}>
+        <button
+          className="logo"
+          onClick={() => navTo('discover')}
+        >
           WEEKENDLY<span>.</span>
         </button>
 
@@ -425,7 +569,10 @@ function App() {
           </button>
         </div>
 
-        <button className="avatar" onClick={() => navTo('weekends')}>
+        <button
+          className="avatar"
+          onClick={() => navTo('weekends')}
+        >
           JY
         </button>
       </nav>
@@ -434,7 +581,9 @@ function App() {
         {page === 'discover' && (
           <>
             <section className="hero">
-              <div className="eyebrow">HONG KONG · THIS WEEKEND</div>
+              <div className="eyebrow">
+                HONG KONG · THIS WEEKEND
+              </div>
 
               <h1>
                 Your weekend,
@@ -443,12 +592,14 @@ function App() {
               </h1>
 
               <p className="subtitle">
-                Tell us what you're in the mood for. We'll find the places,
-                check the weather, and build a plan that actually fits.
+                Tell us what you're in the mood for. We'll find
+                the places, check the weather, and build a plan
+                that actually fits.
               </p>
 
               <div className="weather">
                 <div className="weather-icon">🌦️</div>
+
                 <div>
                   <strong>Saturday · 27°C</strong>
                   <span>Light rain in the afternoon</span>
@@ -466,7 +617,11 @@ function App() {
                 {moods.map(([icon, value]) => (
                   <button
                     key={value}
-                    className={mood === value ? 'chip selected' : 'chip'}
+                    className={
+                      mood === value
+                        ? 'chip selected'
+                        : 'chip'
+                    }
                     onClick={() => setMood(value)}
                   >
                     {icon} {value}
@@ -487,7 +642,11 @@ function App() {
                     {budgets.map((item) => (
                       <button
                         key={item}
-                        className={budget === item ? 'chip selected' : 'chip'}
+                        className={
+                          budget === item
+                            ? 'chip selected'
+                            : 'chip'
+                        }
                         onClick={() => setBudget(item)}
                       >
                         {item}
@@ -506,7 +665,11 @@ function App() {
                     {companies.map((item) => (
                       <button
                         key={item}
-                        className={company === item ? 'chip selected' : 'chip'}
+                        className={
+                          company === item
+                            ? 'chip selected'
+                            : 'chip'
+                        }
                         onClick={() => setCompany(item)}
                       >
                         {item}
@@ -516,21 +679,36 @@ function App() {
                 </div>
               </div>
 
-              <button className="generate" onClick={handlePlan}>
+              <button
+                className="generate"
+                onClick={
+                  mood === 'Surprise Me'
+                    ? surpriseMe
+                    : handlePlan
+                }
+              >
                 <span>✦</span>
-                Plan My Weekend
+
+                {mood === 'Surprise Me'
+                  ? 'Surprise My Weekend'
+                  : 'Plan My Weekend'}
+
                 <span>→</span>
               </button>
 
               <p className="hint">
-                Personalized using your preferences, local weather and budget.
+                Personalized using your preferences, local
+                weather and budget.
               </p>
             </section>
 
             {!planned && (
               <section className="preview">
                 <div>
-                  <span className="section-number">CURATED FOR YOU</span>
+                  <span className="section-number">
+                    CURATED FOR YOU
+                  </span>
+
                   <h2>
                     Less searching.
                     <br />
@@ -539,19 +717,37 @@ function App() {
                 </div>
 
                 {activities.slice(0, 2).map((event) => (
-                  <div className="mini-card" key={event.id}>
-                    <div className="match">{event.baseMatch}% MATCH</div>
-                    <div className={`card-image ${event.tone}`}>
+                  <div
+                    className="mini-card"
+                    key={event.id}
+                  >
+                    <div className="match">
+                      {event.baseMatch}% MATCH
+                    </div>
+
+                    <div
+                      className={`card-image ${event.tone}`}
+                    >
                       {event.emoji}
                     </div>
+
                     <div className="card-content">
                       <span>
-                        {event.location.toUpperCase()} · {event.day.toUpperCase()}
+                        {event.location.toUpperCase()}
+                        {' · '}
+                        {event.day.toUpperCase()}
                       </span>
+
                       <h3>{event.shortTitle}</h3>
+
                       <p>
-                        {event.weather} · {event.duration} ·{' '}
-                        {event.price === 0 ? 'Free' : `~HK$${event.price}`}
+                        {event.weather}
+                        {' · '}
+                        {event.duration}
+                        {' · '}
+                        {event.price === 0
+                          ? 'Free'
+                          : `~HK$${event.price}`}
                       </p>
                     </div>
                   </div>
@@ -560,14 +756,23 @@ function App() {
             )}
 
             {planned && (
-              <section className="results" ref={resultsRef}>
+              <section
+                className="results"
+                ref={resultsRef}
+              >
                 <div className="results-top">
                   <div>
-                    <span className="section-number">✦ YOUR WEEKEND</span>
+                    <span className="section-number">
+                      ✦ YOUR WEEKEND
+                    </span>
+
                     <h2>Your weekend is ready.</h2>
+
                     <p>
-                      Built around <strong>{mood}</strong>,{' '}
-                      <strong>{budget}</strong> and going with{' '}
+                      Built around <strong>{mood}</strong>,
+                      {' '}
+                      <strong>{budget}</strong> and going with
+                      {' '}
                       <strong>{company}</strong>.
                     </p>
                   </div>
@@ -576,7 +781,11 @@ function App() {
                     className="edit-preferences"
                     onClick={() => {
                       setPlanned(false)
-                      window.scrollTo({ top: 500, behavior: 'smooth' })
+
+                      window.scrollTo({
+                        top: 500,
+                        behavior: 'smooth',
+                      })
                     }}
                   >
                     ← Edit preferences
@@ -585,9 +794,19 @@ function App() {
 
                 <div className="recommendation-grid">
                   {recommendations.map((event) => (
-                    <article className="recommendation-card" key={event.id}>
-                      <div className={`recommendation-image ${event.tone}`}>
-                        <span className="big-emoji">{event.emoji}</span>
+                    <article
+                      className="recommendation-card"
+                      key={event.id}
+                    >
+                      <div
+                        className={
+                          `recommendation-image ${event.tone}`
+                        }
+                      >
+                        <span className="big-emoji">
+                          {event.emoji}
+                        </span>
+
                         <div className="recommendation-match">
                           {event.match}% MATCH
                         </div>
@@ -595,29 +814,39 @@ function App() {
 
                       <div className="recommendation-body">
                         <div className="event-meta">
-                          {event.category.toUpperCase()} ·{' '}
+                          {event.category.toUpperCase()}
+                          {' · '}
                           {event.location.toUpperCase()}
                         </div>
 
                         <h3>{event.title}</h3>
 
                         <div className="event-info">
-                          <span>◷ {event.day} · {event.time}</span>
-                          <span>⌛ {event.duration}</span>
                           <span>
-                            {event.price === 0 ? 'FREE' : `HK$${event.price}`}
+                            ◷ {event.day} · {event.time}
+                          </span>
+
+                          <span>⌛ {event.duration}</span>
+
+                          <span>
+                            {event.price === 0
+                              ? 'FREE'
+                              : `HK$${event.price}`}
                           </span>
                         </div>
 
                         <div className="why">
                           <span>WHY THIS FITS YOU</span>
+
                           <p>
                             {event.tags.includes(mood)
                               ? `You selected ${mood}, and this activity closely matches that interest. `
                               : `This adds some variety to your selected ${mood} mood. `}
+
                             {event.price <= budgetLimit
                               ? `It fits your ${budget} budget. `
                               : ''}
+
                             {event.weather === 'Indoor'
                               ? "It's also mostly indoors, making it a strong choice for Saturday's expected rain."
                               : event.description}
@@ -627,18 +856,31 @@ function App() {
                         <div className="card-actions">
                           <button
                             className="view-plan"
-                            onClick={() => setSelectedPlan(event)}
+                            onClick={() =>
+                              setSelectedPlan(event)
+                            }
                           >
                             View Plan →
                           </button>
 
                           <button
                             className={`save-button ${
-                              saved.includes(event.id) ? 'saved' : ''
+                              saved.includes(event.id)
+                                ? 'saved'
+                                : ''
                             }`}
-                            onClick={() => toggleSave(event.id)}
+                            aria-label={
+                              saved.includes(event.id)
+                                ? `Unsave ${event.title}`
+                                : `Save ${event.title}`
+                            }
+                            onClick={() =>
+                              toggleSave(event.id)
+                            }
                           >
-                            {saved.includes(event.id) ? '♥' : '♡'}
+                            {saved.includes(event.id)
+                              ? '♥'
+                              : '♡'}
                           </button>
                         </div>
                       </div>
@@ -648,11 +890,14 @@ function App() {
 
                 <div className="ai-note">
                   <span>✦</span>
+
                   <div>
                     <strong>How were these picked?</strong>
+
                     <p>
-                      WEEKENDLY considers your interests, budget, group type and
-                      expected weather conditions to rank activities that fit
+                      WEEKENDLY considers your interests,
+                      budget, group type and expected weather
+                      conditions to rank activities that fit
                       your weekend.
                     </p>
                   </div>
@@ -665,11 +910,15 @@ function App() {
         {page === 'explore' && (
           <section className="inner-page">
             <div className="page-heading">
-              <span className="section-number">EXPLORE HONG KONG</span>
+              <span className="section-number">
+                EXPLORE HONG KONG
+              </span>
+
               <h1>Find something worth leaving home for.</h1>
+
               <p>
-                Browse exhibitions, markets, music, outdoor escapes and slower
-                weekend plans.
+                Browse exhibitions, markets, music, outdoor
+                escapes and slower weekend plans.
               </p>
             </div>
 
@@ -689,10 +938,18 @@ function App() {
                   key={event.id}
                   onClick={() => setSelectedPlan(event)}
                 >
-                  <div className={`explore-image ${event.tone}`}>
+                  <div
+                    className={`explore-image ${event.tone}`}
+                  >
                     <span>{event.emoji}</span>
+
                     <button
                       className="floating-save"
+                      aria-label={
+                        saved.includes(event.id)
+                          ? `Unsave ${event.title}`
+                          : `Save ${event.title}`
+                      }
                       onClick={(e) => {
                         e.stopPropagation()
                         toggleSave(event.id)
@@ -704,13 +961,20 @@ function App() {
 
                   <div className="explore-content">
                     <span>
-                      {event.location.toUpperCase()} · {event.day.toUpperCase()}
+                      {event.location.toUpperCase()}
+                      {' · '}
+                      {event.day.toUpperCase()}
                     </span>
+
                     <h3>{event.title}</h3>
                     <p>{event.description}</p>
+
                     <div>
-                      {event.time} ·{' '}
-                      {event.price === 0 ? 'Free' : `HK$${event.price}`}
+                      {event.time}
+                      {' · '}
+                      {event.price === 0
+                        ? 'Free'
+                        : `HK$${event.price}`}
                     </div>
                   </div>
                 </article>
@@ -723,16 +987,23 @@ function App() {
           <section className="inner-page crews-page">
             <div className="page-heading split-heading">
               <div>
-                <span className="section-number">GO TOGETHER</span>
+                <span className="section-number">
+                  GO TOGETHER
+                </span>
+
                 <h1>Plans are better with people.</h1>
+
                 <p>
-                  Join a small crew around an activity you already want to do.
+                  Join a small crew around an activity you
+                  already want to do.
                 </p>
               </div>
 
               <button
                 className="primary-small"
-                onClick={() => showToast('Crew creation prototype opened')}
+                onClick={() =>
+                  showToast('Crew creation prototype opened')
+                }
               >
                 + Create a Crew
               </button>
@@ -740,9 +1011,13 @@ function App() {
 
             <div className="crew-grid">
               {crewData.map((crew) => (
-                <article className="crew-card" key={crew.id}>
+                <article
+                  className="crew-card"
+                  key={crew.id}
+                >
                   <div className="crew-top">
                     <span>OPEN CREW</span>
+
                     <strong>
                       {crew.members}/{crew.capacity}
                     </strong>
@@ -751,7 +1026,9 @@ function App() {
                   <h3>{crew.name}</h3>
                   <p>{crew.activity}</p>
 
-                  <div className="crew-time">{crew.time}</div>
+                  <div className="crew-time">
+                    {crew.time}
+                  </div>
 
                   <div className="crew-tags">
                     {crew.interests.map((tag) => (
@@ -772,7 +1049,9 @@ function App() {
                         showToast(`Joined ${crew.name}`)
                       }}
                     >
-                      {joinedCrew ? 'Joined ✓' : 'Join Crew →'}
+                      {joinedCrew
+                        ? 'Joined ✓'
+                        : 'Join Crew →'}
                     </button>
                   </div>
                 </article>
@@ -784,11 +1063,15 @@ function App() {
         {page === 'weekends' && (
           <section className="inner-page">
             <div className="page-heading">
-              <span className="section-number">MY WEEKENDS</span>
+              <span className="section-number">
+                MY WEEKENDS
+              </span>
+
               <h1>Places become memories.</h1>
+
               <p>
-                Keep the plans you saved, the places you went and the guides
-                you want to share.
+                Keep the plans you saved, the places you went
+                and the guides you want to share.
               </p>
             </div>
 
@@ -797,12 +1080,19 @@ function App() {
                 <div>
                   <span>ACTIVE PLAN</span>
                   <h2>{activePlan.title}</h2>
+
                   <p>
-                    {activePlan.day} · {activePlan.time} · {activePlan.location}
+                    {activePlan.day}
+                    {' · '}
+                    {activePlan.time}
+                    {' · '}
+                    {activePlan.location}
                   </p>
                 </div>
 
-                <button onClick={() => setCheckinModal(true)}>
+                <button
+                  onClick={() => setCheckinModal(true)}
+                >
                   ✓ Check In
                 </button>
               </div>
@@ -813,10 +1103,12 @@ function App() {
                 <strong>{saved.length}</strong>
                 <span>Saved Plans</span>
               </div>
+
               <div>
                 <strong>{guide ? 1 : 0}</strong>
                 <span>Places Visited</span>
               </div>
+
               <div>
                 <strong>{joinedCrew ? 1 : 0}</strong>
                 <span>Crews Joined</span>
@@ -834,30 +1126,42 @@ function App() {
                   {saved.length === 0 && (
                     <div className="empty-state">
                       <span>♡</span>
+
                       <p>
-                        Save an activity from Discover or Explore and it will
-                        appear here.
+                        Save an activity from Discover or
+                        Explore and it will appear here.
                       </p>
                     </div>
                   )}
 
                   {activities
-                    .filter((event) => saved.includes(event.id))
+                    .filter((event) =>
+                      saved.includes(event.id)
+                    )
                     .map((event) => (
                       <button
                         className="saved-item"
                         key={event.id}
-                        onClick={() => setSelectedPlan(event)}
+                        onClick={() =>
+                          setSelectedPlan(event)
+                        }
                       >
-                        <span className={`saved-icon ${event.tone}`}>
+                        <span
+                          className={
+                            `saved-icon ${event.tone}`
+                          }
+                        >
                           {event.emoji}
                         </span>
+
                         <span>
                           <strong>{event.title}</strong>
+
                           <small>
                             {event.location} · {event.day}
                           </small>
                         </span>
+
                         <b>→</b>
                       </button>
                     ))}
@@ -874,9 +1178,13 @@ function App() {
                   <div className="map-road road-one" />
                   <div className="map-road road-two" />
                   <div className="map-water" />
+
                   <span className="map-pin pin-one">●</span>
                   <span className="map-pin pin-two">●</span>
-                  <div className="map-label">HONG KONG</div>
+
+                  <div className="map-label">
+                    HONG KONG
+                  </div>
                 </div>
               </div>
             </div>
@@ -889,13 +1197,18 @@ function App() {
                 </div>
 
                 <article className="guide-card">
-                  <div className={`guide-visual ${guide.activity.tone}`}>
+                  <div
+                    className={
+                      `guide-visual ${guide.activity.tone}`
+                    }
+                  >
                     <span>{guide.activity.emoji}</span>
                   </div>
 
                   <div className="guide-copy">
                     <span>
-                      {guide.activity.location.toUpperCase()} · WEEKEND NOTE
+                      {guide.activity.location.toUpperCase()}
+                      {' · WEEKEND NOTE'}
                     </span>
 
                     <h2>{guide.activity.title}</h2>
@@ -908,14 +1221,22 @@ function App() {
                     <p>{guide.note}</p>
 
                     <div className="guide-meta">
-                      <span>💰 HK${guide.activity.price}</span>
-                      <span>⏱ {guide.activity.duration}</span>
+                      <span>
+                        💰 HK${guide.activity.price}
+                      </span>
+
+                      <span>
+                        ⏱ {guide.activity.duration}
+                      </span>
+
                       <span>👥 {company}</span>
                     </div>
 
                     <button
                       onClick={() =>
-                        showToast('Shareable Weekend Guide generated')
+                        showToast(
+                          'Shareable Weekend Guide generated'
+                        )
                       }
                     >
                       ↗ Share Guide
@@ -939,25 +1260,29 @@ function App() {
                 ← Back
               </button>
 
-              <span className="plan-label">✦ AI WEEKEND PLAN</span>
+              <span className="plan-label">
+                ✦ AI WEEKEND PLAN
+              </span>
             </div>
 
             <div className="plan-title-area">
               <div>
                 <span className="plan-location">
-                  {selectedPlan.location.toUpperCase()} ·{' '}
+                  {selectedPlan.location.toUpperCase()}
+                  {' · '}
                   {selectedPlan.day.toUpperCase()}
                 </span>
 
                 <h2>{selectedPlan.title}</h2>
-
                 <p>{selectedPlan.description}</p>
               </div>
 
               <div className="plan-score">
                 <strong>
-                  {selectedPlan.match || selectedPlan.baseMatch}%
+                  {selectedPlan.match ||
+                    selectedPlan.baseMatch}%
                 </strong>
+
                 <span>MATCH</span>
               </div>
             </div>
@@ -970,6 +1295,7 @@ function App() {
 
               <div>
                 <span>BUDGET</span>
+
                 <strong>
                   {selectedPlan.price === 0
                     ? 'Free'
@@ -994,14 +1320,34 @@ function App() {
                 <p>{selectedPlan.day} plan</p>
               </div>
 
+              {selectedPlan.edited && (
+                <p
+                  role="status"
+                  style={{
+                    fontSize: 12,
+                    marginBottom: 20,
+                  }}
+                >
+                  Route edited. Times and budget remain
+                  estimates from the original plan.
+                </p>
+              )}
+
               <div className="timeline">
                 {selectedPlan.route.map((stop, index) => (
-                  <div className="timeline-item" key={`${stop.time}-${stop.title}`}>
-                    <div className="timeline-time">{stop.time}</div>
+                  <div
+                    className="timeline-item"
+                    key={`${stop.time}-${stop.title}`}
+                  >
+                    <div className="timeline-time">
+                      {stop.time}
+                    </div>
 
                     <div
                       className={`timeline-line ${
-                        index === selectedPlan.route.length - 1 ? 'last' : ''
+                        index === selectedPlan.route.length - 1
+                          ? 'last'
+                          : ''
                       }`}
                     >
                       <div
@@ -1012,12 +1358,46 @@ function App() {
                     </div>
 
                     <div className="timeline-content">
-                      <div className="timeline-icon">{stop.icon}</div>
+                      <div className="timeline-icon">
+                        {stop.icon}
+                      </div>
 
                       <div>
                         <span>{stop.type}</span>
                         <h3>{stop.title}</h3>
                         <p>{stop.text}</p>
+
+                        <button
+                          type="button"
+                          disabled={
+                            selectedPlan.route.length <= 1
+                          }
+                          onClick={() => removeStop(index)}
+                          aria-label={
+                            `Remove ${stop.title} from this plan`
+                          }
+                          style={{
+                            marginTop: 10,
+                            padding: '8px 12px',
+                            minHeight: 40,
+                            border: '1px solid #d8d5dd',
+                            borderRadius: 8,
+                            background: 'transparent',
+                            color: 'inherit',
+                            font: 'inherit',
+                            fontSize: 12,
+                            cursor:
+                              selectedPlan.route.length <= 1
+                                ? 'default'
+                                : 'pointer',
+                            opacity:
+                              selectedPlan.route.length <= 1
+                                ? 0.4
+                                : 1,
+                          }}
+                        >
+                          Remove stop
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1069,11 +1449,16 @@ function App() {
               ×
             </button>
 
-            <span className="modal-kicker">GO TOGETHER</span>
+            <span className="modal-kicker">
+              GO TOGETHER
+            </span>
+
             <h2>Join the Saturday Crew?</h2>
+
             <p>
-              Meet a small group going to the same plan. Everyone can see the
-              activity, time and estimated budget before joining.
+              Meet a small group going to the same plan.
+              Everyone can see the activity, time and
+              estimated budget before joining.
             </p>
 
             <div className="crew-preview">
@@ -1082,6 +1467,7 @@ function App() {
                 <span>AM</span>
                 <span>KT</span>
               </div>
+
               <div>
                 <strong>3 / 5 people</strong>
                 <span>Art · Coffee · Photography</span>
@@ -1112,18 +1498,27 @@ function App() {
               ×
             </button>
 
-            <span className="modal-kicker">WEEKEND CHECK-IN</span>
+            <span className="modal-kicker">
+              WEEKEND CHECK-IN
+            </span>
+
             <h2>How was it?</h2>
+
             <p>
-              Add a quick memory. WEEKENDLY will turn it into a shareable
-              mini-guide.
+              Add a quick memory. WEEKENDLY will turn it
+              into a shareable mini-guide.
             </p>
 
             <div className="rating-row">
               {[1, 2, 3, 4, 5].map((number) => (
                 <button
                   key={number}
-                  className={number <= rating ? 'rating-active' : ''}
+                  className={
+                    number <= rating
+                      ? 'rating-active'
+                      : ''
+                  }
+                  aria-label={`Rate ${number} out of 5`}
                   onClick={() => setRating(number)}
                 >
                   ★
@@ -1134,30 +1529,36 @@ function App() {
             <textarea
               placeholder="What should other people know? e.g. Go around 4 PM — the waterfront is great before sunset."
               value={checkinText}
-              onChange={(e) => setCheckinText(e.target.value)}
+              onChange={(e) =>
+                setCheckinText(e.target.value)
+              }
             />
 
             <div className="quick-tags">
               <button
                 onClick={() =>
-                  setCheckinText('Worth it — I would recommend this plan.')
+                  setCheckinText(
+                    'Worth it — I would recommend this plan.'
+                  )
                 }
               >
                 Worth it
               </button>
+
               <button
                 onClick={() =>
                   setCheckinText(
-                    'Great with friends and easy to do as a small group.',
+                    'Great with friends and easy to do as a small group.'
                   )
                 }
               >
                 Good for friends
               </button>
+
               <button
                 onClick={() =>
                   setCheckinText(
-                    'Budget friendly and easy to fit into an afternoon.',
+                    'Budget friendly and easy to fit into an afternoon.'
                   )
                 }
               >
@@ -1165,7 +1566,10 @@ function App() {
               </button>
             </div>
 
-            <button className="modal-primary" onClick={completeCheckin}>
+            <button
+              className="modal-primary"
+              onClick={completeCheckin}
+            >
               ✦ Generate My Weekend Guide
             </button>
           </div>
