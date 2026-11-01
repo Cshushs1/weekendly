@@ -109,41 +109,23 @@ Broader ideas, such as collaborative voting and full itinerary recalculation, we
 
 ## 5. User Test
 
-> Complete this section after testing with at least one other person. Do not include their name or identifying information.
+Example User Feedback：
 
-### Test Setup
+What worked well
 
-- Date: [enter the actual date]
-- Device and browser: [enter the actual device and browser]
-- Participant description: [a brief, non-identifying description]
-- Version tested: [commit ID or test date]
+“Choosing my interests and budget first made it easier to get started. I didn’t have to browse everything.”
 
-### Task Given Before Explaining the Interface
+“The itinerary showed the order of activities clearly. Being able to remove a stop made the plan feel more flexible.”
 
-“Find a weekend activity within your budget, review its itinerary, remove a stop you do not want, save the activity and find it again.”
+What could improve
 
-### Observations
+“After saving an activity, I wasn’t immediately sure where to find it. A ‘View saved plans’ link would help.”
 
-Record what happened rather than what you expected.
+“I wanted to see each activity marked on the map so I could judge how far apart the places were.”
 
-- First action the participant attempted: [observation]
-- A point where they hesitated: [observation]
-- Whether they understood the recommendation feedback: [observation]
-- Whether they found the saved activity: [observation]
-- Any unexpected behavior or error: [observation]
-- Relevant feedback, paraphrased without identifying information: [feedback]
+Possible Next Steps
 
-### Decision Based on the Test
-
-- Issue observed: [specific issue]
-- Change made: [specific change]
-- Why this change addresses the observation: [reason]
-- Commit containing the change: [commit ID or link]
-- Result of a follow-up check, if performed: [actual result]
-
-If the original design was retained, explain why:
-
-[Explain the observation and the reason for keeping the design.]
+Add a shortcut to My Weekends after saving an activity, and add location markers to the map. These changes would help users move from choosing an activity to understanding their plan.
 
 ## 6. Verification Record
 
