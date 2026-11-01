@@ -129,26 +129,19 @@ Add a shortcut to My Weekends after saving an activity, and add location markers
 
 ## 6. Verification Record
 
-Complete the result column with actual outcomes. Use “Not tested” where appropriate.
+Codex assisted with a browser check of the live website.
 
-| Check | Expected behavior | Actual result |
-| --- | --- | --- |
-| Fresh local setup | README commands install dependencies and open the app | [result] |
-| Preference changes | Recommendation ordering responds to selections | [result] |
-| Surprise Me | Result fits the selected budget | [result] |
-| Repeated random selection | Immediate repetition is avoided when alternatives exist | [result] |
-| Remove a stop | The selected stop disappears | [result] |
-| Final remaining stop | Removal is disabled | [result] |
-| Save and refresh | Saved activity remains available | [result] |
-| Empty demo name | Empty input is not accepted | [result] |
-| Demo sign-out | The navigation returns to Sign in | [result] |
-| Dialog keyboard use | Focus remains in the dialog; Escape closes it | [result] |
-| Storage unavailable | A notice appears instead of silently claiming success | [result] |
-| Map unavailable | Other core planning interactions remain usable | [result] |
-| Mobile layout | Main controls remain visible and usable | [result] |
-| Logged-out repository access | The public repository opens without a GitHub account | [result] |
+- Selecting Arts, Under HK$100 and Friends displayed three recommendations.
+- The M+ itinerary opened correctly.
+- Removing Coffee Nearby removed the stop and displayed the route-edited notice.
+- Starting the edited plan displayed a confirmation.
+- The saved activity and active plan remained available after refreshing.
 
-A successful deployment is evidence that the hosting build completed. It does not prove that every interaction works correctly.
+The check revealed low contrast in the recommendation heading. The embedded map also did not load in the test browser.
+
+Fresh local installation, mobile layout, unavailable browser storage and the complete demo-profile flow were not tested during this check.
+
+This was an AI-assisted browser check, not a test with another person.
 
 ## 7. Known Unfinished Areas
 
