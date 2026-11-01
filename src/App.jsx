@@ -569,12 +569,7 @@ function App() {
           </button>
         </div>
 
-        <button
-          className="avatar"
-          onClick={() => navTo('weekends')}
-        >
-          JY
-        </button>
+        <DemoAccount onOpenWeekends={() => navTo('weekends')} />
       </nav>
 
       <main>
@@ -1590,4 +1585,137 @@ function App() {
   )
 }
 
+
+const demoAccountStyles = {
+  overlay: { position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(20, 17, 28, .45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(5px)' },
+  panel: { position: 'relative', width: '100%', maxWidth: 390, maxHeight: '90svh', overflowY: 'auto', borderRadius: 24, padding: 30, background: '#fff', color: '#282330', boxShadow: '0 24px 80px #0002', textAlign: 'left' },
+  input: { display: 'block', width: '100%', padding: '13px 14px', border: '1px solid #ddd6e6', borderRadius: 12, color: '#282330', background: '#faf8fc', font: 'inherit', fontSize: 14, margin: '8px 0 18px' },
+  primary: { width: '100%', minHeight: 48, border: 0, borderRadius: 12, background: '#282330', color: '#fff', font: 'inherit', fontSize: 14, cursor: 'pointer', padding: 12 },
+  secondary: { width: '100%', minHeight: 44, border: '1px solid #e4deeb', borderRadius: 12, background: '#fff', color: '#5c5267', font: 'inherit', fontSize: 13, cursor: 'pointer', marginTop: 10, padding: 10 },
+  close: { position: 'absolute', top: 12, right: 12, width: 40, height: 40, border: 0, background: 'transparent', color: '#72677d', fontSize: 24, cursor: 'pointer' },
+}
+
+function DemoAccount({ onOpenWeekends }) {
+  const [profile, setProfile] = useState(() => {
+    try {
+      const value = JSON.parse(localStorage.getItem('weekendly-demo-profile'))
+      return value && typeof value.name === 'string' && value.name.trim()
+        ? { name: value.name.trim().slice(0, 40) }
+        : null
+    } catch {
+      return null
+    }
+  })
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [notice, setNotice] = useState('')
+  const dialogRef = useRef(null)
+  const triggerRef = useRef(null)
+
+  const initials = profile
+    ? profile.name.split(/\s+/).slice(0, 2).map((word) => Array.from(word)[0]).join('').toUpperCase()
+    : ''
+
+  useEffect(() => {
+    if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    dialogRef.current?.querySelector('input, button')?.focus()
+    function handleKey(event) {
+      if (event.key === 'Escape') setOpen(false)
+      if (event.key !== 'Tab') return
+      const controls = [...dialogRef.current.querySelectorAll('button, input, [tabindex="0"]')].filter((el) => !el.disabled)
+      const first = controls[0]
+      const last = controls[controls.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last?.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleKey)
+      triggerRef.current?.focus()
+    }
+  }, [open])
+
+  function enterDemo(event) {
+    event.preventDefault()
+    const cleanName = name.trim().slice(0, 40)
+    if (!cleanName) {
+      setNotice('Please enter a display name.')
+      return
+    }
+    const next = { name: cleanName }
+    let message = ''
+    try {
+      localStorage.setItem('weekendly-demo-profile', JSON.stringify(next))
+    } catch {
+      message = 'Demo started for this visit. Browser storage is unavailable.'
+    }
+    setProfile(next)
+    setName('')
+    setNotice(message)
+  }
+
+  function leaveDemo() {
+    try {
+      localStorage.removeItem('weekendly-demo-profile')
+      setNotice('You have left the demo profile. Saved plans stay in this browser.')
+    } catch {
+      setNotice('Demo ended for this visit. Browser storage could not be cleared.')
+    }
+    setProfile(null)
+    setName('')
+  }
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        className="avatar"
+        aria-label={profile ? `Open demo profile for ${profile.name}` : 'Sign in to the demo'}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => { setNotice(''); setOpen(true) }}
+        style={profile ? undefined : { width: 'auto', minWidth: 76, padding: '0 16px', borderRadius: 28, fontSize: 12 }}
+      >
+        {profile ? initials : 'Sign in'}
+      </button>
+      {open && (
+        <div style={demoAccountStyles.overlay} onClick={(event) => { if (event.target === event.currentTarget) setOpen(false) }}>
+          <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="demo-account-title" aria-describedby="demo-account-description" style={demoAccountStyles.panel}>
+            <button style={demoAccountStyles.close} onClick={() => setOpen(false)} aria-label="Close account dialog">×</button>
+            <span style={{ fontSize: 10, letterSpacing: 2, color: '#8a709f' }}>WEEKENDLY · CLASS DEMO</span>
+            <h2 id="demo-account-title" style={{ fontSize: 28, lineHeight: 1.2, margin: '18px 0 12px', overflowWrap: 'anywhere' }}>
+              {profile ? `Hello, ${profile.name}.` : 'Make the weekend yours.'}
+            </h2>
+            <p id="demo-account-description" style={{ fontSize: 13, lineHeight: 1.8, color: '#7b7187', marginBottom: 22 }}>
+              This is a demo profile, not a real account. No password needed. Profiles and saved plans stay in this browser and are shared on this device.
+            </p>
+            {profile ? (
+              <>
+                <button style={demoAccountStyles.primary} onClick={() => { setOpen(false); onOpenWeekends() }}>My Weekends →</button>
+                <button style={demoAccountStyles.secondary} onClick={leaveDemo}>Sign out of demo</button>
+              </>
+            ) : (
+              <form onSubmit={enterDemo}>
+                <label htmlFor="demo-display-name" style={{ fontSize: 12 }}>Display name</label>
+                <input id="demo-display-name" style={demoAccountStyles.input} value={name} onChange={(event) => setName(event.target.value)} maxLength={40} autoComplete="nickname" placeholder="What should we call you?" required />
+                <button style={demoAccountStyles.primary} type="submit">Enter demo →</button>
+                <button style={demoAccountStyles.secondary} type="button" onClick={() => setOpen(false)}>Keep exploring as a guest</button>
+              </form>
+            )}
+            <p role="status" style={{ fontSize: 12, lineHeight: 1.6, color: '#776783', margin: notice ? '16px 0 0' : 0 }}>{notice}</p>
+          </section>
+        </div>
+      )}
+    </>
+  )
+
 export default App
+
