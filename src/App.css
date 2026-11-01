@@ -1751,3 +1751,126 @@ main {
     padding-bottom: 120px;
   }
 }
+
+/* Clear keyboard focus */
+.app button:focus-visible,
+.app textarea:focus-visible {
+  outline: 3px solid #8967d5;
+  outline-offset: 4px;
+}
+
+/* Preference selection */
+.app .chip {
+  min-height: 44px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.app .chip.selected {
+  box-shadow: 0 0 0 2px rgba(137, 103, 213, 0.18);
+}
+
+/* Main action */
+.app .generate {
+  min-height: 52px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.app .generate:active {
+  transform: scale(0.98);
+}
+
+/* Save buttons: easier to tap */
+.app .save-button,
+.app .floating-save {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Remove stop button */
+.app .timeline-content button {
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.app .timeline-content button:not(:disabled):hover {
+  background-color: #f9edf0 !important;
+  border-color: #cf9ba9 !important;
+}
+
+.app .timeline-content button:disabled {
+  cursor: not-allowed !important;
+}
+
+/* Long descriptions */
+.app .timeline-content,
+.app .guide-copy,
+.app .recommendation-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Save and action notifications */
+.app .toast {
+  max-width: min(420px, calc(100vw - 32px));
+  text-align: center;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+/* Hover feedback only on devices with a mouse */
+@media (hover: hover) {
+  .app .chip:hover {
+    transform: translateY(-2px);
+  }
+
+  .app .generate:hover {
+    box-shadow: 0 8px 24px rgba(95, 65, 145, 0.18);
+  }
+}
+
+/* Mobile layout */
+@media (max-width: 600px) {
+  .app .plan-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .app .plan-buttons {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .app .plan-buttons button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .app .plan-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+
+  .app .timeline-content button {
+    min-height: 44px !important;
+  }
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .app *,
+  .app *::before,
+  .app *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
