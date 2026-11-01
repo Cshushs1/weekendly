@@ -62,7 +62,6 @@ It does not display personal activity markers, visited locations or calculated t
 
 ## Screenshots
 
-The following images should be captured from the running project.
 
 ### Discover and Preferences
 
